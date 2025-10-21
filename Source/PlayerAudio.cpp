@@ -32,7 +32,6 @@ void PlayerAudio::loadFile(const juce::File& file)
         transportSource.stop();
         transportSource.setSource(nullptr);
         readerSource.reset(new juce::AudioFormatReaderSource(reader, true));
-
         transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
         play();
     }
@@ -55,6 +54,23 @@ void PlayerAudio::restart()
     transportSource.start();
 }
 
+void PlayerAudio::pause()
+{
+    transportSource.stop();
+}
+
+void PlayerAudio::goToStart()
+{
+    transportSource.setPosition(0.0);
+}
+
+void PlayerAudio::goToEnd()
+{
+    double length = transportSource.getLengthInSeconds();
+    if (length > 0.1)
+        transportSource.setPosition(length - 0.1);
+}
+
 void PlayerAudio::setGain(float gain)
 {
     currentVolume = gain;
@@ -65,13 +81,11 @@ void PlayerAudio::toggleMute()
 {
     if (isMuted)
     {
-        // Unmute
         setGain((float)previousVolume);
         isMuted = false;
     }
     else
     {
-        // Mute
         previousVolume = currentVolume;
         setGain(0.0f);
         isMuted = true;

@@ -15,6 +15,10 @@ public:
     void play();
     void stop();
     void restart();
+    void pause();
+    void goToStart();
+    void goToEnd();
+
 
     // ✅ تعديل موحّد للصوت (Gain)
     void setGain(float gain);

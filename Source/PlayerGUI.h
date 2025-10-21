@@ -24,6 +24,14 @@ private:
     juce::TextButton loadButton{ "Load File" };
     juce::TextButton restartButton{ "Restart" };
     juce::TextButton stopButton{ "Stop" };
+    juce::TextButton playButton{ "play" };
+    juce::TextButton pauseButton{ "pause" };
+    juce::TextButton goToStartButton{ "|< Go To Start" };
+    juce::TextButton goToEndButton{ ">| Go To End" };
+
+
+
+
     juce::Slider volumeSlider;
 
     juce::TextButton muteButton{ "Mute" };

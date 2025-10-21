@@ -3,22 +3,20 @@
 PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     : playerAudio(audioRef)
 {
-    // الأزرار الأساسية
-    for (auto* btn : { &loadButton, &restartButton, &stopButton })
+    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton })
     {
         btn->addListener(this);
         addAndMakeVisible(btn);
     }
 
-    // السلايدر الخاص بالصوت
     volumeSlider.setRange(0.0, 1.0, 0.01);
     volumeSlider.setValue(0.5);
     volumeSlider.addListener(this);
     addAndMakeVisible(volumeSlider);
 
-    // زر الـ Mute
-    addAndMakeVisible(muteButton);
+    muteButton.setButtonText("Mute");
     muteButton.addListener(this);
+    addAndMakeVisible(muteButton);
 }
 
 PlayerGUI::~PlayerGUI() {}
@@ -36,8 +34,14 @@ void PlayerGUI::resized()
     stopButton.setBounds(240, y, 80, 40);
     muteButton.setBounds(335, y, 70, 40);
 
-
     volumeSlider.setBounds(20, 100, getWidth() - 40, 30);
+
+    int y2 = 160;
+    int buttonWidth = 100;
+    playButton.setBounds(20, y2, buttonWidth, 40);
+    pauseButton.setBounds(130, y2, buttonWidth, 40);
+    goToStartButton.setBounds(240, y2, buttonWidth + 20, 40);
+    goToEndButton.setBounds(370, y2, buttonWidth + 20, 40);
 }
 
 void PlayerGUI::buttonClicked(juce::Button* button)
@@ -57,27 +61,26 @@ void PlayerGUI::buttonClicked(juce::Button* button)
             });
     }
     else if (button == &restartButton)
-    {
         playerAudio.restart();
-    }
     else if (button == &stopButton)
-    {
         playerAudio.stop();
-    }
+    else if (button == &playButton)
+        playerAudio.play();
+    else if (button == &pauseButton)
+        playerAudio.pause();
+    else if (button == &goToStartButton)
+        playerAudio.goToStart();
+    else if (button == &goToEndButton)
+        playerAudio.goToEnd();
     else if (button == &muteButton)
     {
-        playerAudio.toggleMute(); // استخدمنا الدالة من PlayerAudio
-        if (playerAudio.getMuteState())
-            muteButton.setButtonText("Unmute");
-        else
-            muteButton.setButtonText("Mute");
+        playerAudio.toggleMute();
+        muteButton.setButtonText(playerAudio.getMuteState() ? "Unmute" : "Mute");
     }
 }
 
 void PlayerGUI::sliderValueChanged(juce::Slider* slider)
 {
     if (slider == &volumeSlider)
-    {
         playerAudio.setGain((float)slider->getValue());
-    }
 }
