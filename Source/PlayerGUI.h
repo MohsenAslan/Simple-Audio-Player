@@ -28,8 +28,7 @@ private:
     juce::TextButton pauseButton{ "pause" };
     juce::TextButton goToStartButton{ "|< Go To Start" };
     juce::TextButton goToEndButton{ ">| Go To End" };
-
-
+    juce::TextButton loopButton{ "Loop" };
 
 
     juce::Slider volumeSlider;
@@ -42,6 +41,7 @@ private:
     float currentGain = 1.0f;
     float previousVolume = 1.0f;
 
+    
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };

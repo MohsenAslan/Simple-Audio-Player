@@ -3,7 +3,7 @@
 PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     : playerAudio(audioRef)
 {
-    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton })
+    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton , &loopButton })
     {
         btn->addListener(this);
         addAndMakeVisible(btn);
@@ -33,6 +33,7 @@ void PlayerGUI::resized()
     restartButton.setBounds(140, y, 80, 40);
     stopButton.setBounds(240, y, 80, 40);
     muteButton.setBounds(335, y, 70, 40);
+    loopButton.setBounds(420, y, 80, 40);
 
     volumeSlider.setBounds(20, 100, getWidth() - 40, 30);
 
@@ -77,7 +78,20 @@ void PlayerGUI::buttonClicked(juce::Button* button)
         playerAudio.toggleMute();
         muteButton.setButtonText(playerAudio.getMuteState() ? "Unmute" : "Mute");
     }
+    
+    else if (button == &loopButton)
+    {
+        playerAudio.toggleLoop();
+
+        static bool loopOn2 = false;
+        loopOn2 = !loopOn2;
+
+        loopButton.setButtonText(loopOn2 ? "Loop2: ON" : "Loop2: OFF");
+    }
+
 }
+
+
 
 void PlayerGUI::sliderValueChanged(juce::Slider* slider)
 {
