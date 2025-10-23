@@ -18,32 +18,25 @@ public:
     void pause();
     void goToStart();
     void goToEnd();
-
-
-
-    // ✅ تعديل موحّد للصوت (Gain)
     void setGain(float gain);
     float getGain() const { return (float)currentVolume; }
-
-    // ✅ ميوت / أنميوت
     void toggleMute();
     bool getMuteState() const { return isMuted; }
-
     void toggleLoop();
 
-    //setLooping(bool shouldLoop);
-    //void setLooping(bool shouldLoop);
+ 
 private:
     juce::AudioFormatManager formatManager;
     std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
     juce::AudioTransportSource transportSource;
 
 
-    double currentVolume = 1.0;     // الصوت الحالي
-    double previousVolume = 1.0;    // الصوت قبل الكتم
+    double currentVolume = 1.0;     
+    double previousVolume = 1.0; 
     bool isMuted = false;
 
     bool isLooping = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)
+
 };
