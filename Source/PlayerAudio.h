@@ -28,8 +28,6 @@ public:
     bool getMuteState() const { return isMuted; }
     void toggleLoop();
 
-    void toggleLoop();
-
     //setLooping(bool shouldLoop);
     //void setLooping(bool shouldLoop);
     void setPosition(double newPositionInSeconds);
@@ -70,12 +68,6 @@ private:
     double BookmarkPosition = 0.0;
 
 
-    double pointA = 0.0;
-    double pointB = 0.0;
-    bool loopABEnabled = false;
-
-    // bonus 
-    double BookmarkPosition = 0.0;
     
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)

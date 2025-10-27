@@ -180,7 +180,7 @@ void PlayerGUI::sliderValueChanged(juce::Slider* slider)
 {
     if (slider == &volumeSlider)
         playerAudio.setGain((float)slider->getValue());
-    
+
     else if (slider == &positionSlider)
     {
         playerAudio.setPosition((float)slider->getValue());
@@ -193,4 +193,4 @@ void PlayerGUI::sliderValueChanged(juce::Slider* slider)
         timeLabel.setText(juce::String(minutes) + ":" + (seconds < 10 ? "0" : "") + juce::String(seconds),
             juce::dontSendNotification);
     }
-}﻿
+};
