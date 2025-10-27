@@ -4,11 +4,13 @@
 
 class PlayerGUI : public juce::Component,
     public juce::Button::Listener,
-    public juce::Slider::Listener
+    public juce::Slider::Listener,
+    public::juce::Timer
 {
 public:
     PlayerGUI(PlayerAudio& audioRef);
     ~PlayerGUI() override;
+
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -16,8 +18,10 @@ public:
     void buttonClicked(juce::Button* button) override;
     void sliderValueChanged(juce::Slider* slider) override;
 
+    void timerCallback() override;
     void setGain(float gain);
     float getGain() const;
+    
 private:
     PlayerAudio& playerAudio;
 
@@ -30,8 +34,20 @@ private:
     juce::TextButton goToEndButton{ ">| Go To End" };
     juce::TextButton loopButton{ "Loop" };
 
+    juce::TextButton beginButton{ "StartLoop" };
+    juce::TextButton endButton{ "EndLoop" };
+    juce::TextButton loopABButton{ "Mini Loop" };
+
+    // Bonus
+    juce::TextButton setBookMarkButton{ "Set mark" };
+    juce::TextButton goToBookMarkButton{ "Go To mark" };
+    
+
 
     juce::Slider volumeSlider;
+    juce::Slider positionSlider;
+    juce::Label timeLabel;
+    
 
     juce::TextButton muteButton{ "Mute" };
 
@@ -41,7 +57,8 @@ private:
     float currentGain = 1.0f;
     float previousVolume = 1.0f;
 
-    
+    bool stratLoop = false;
+    bool endLoop = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };

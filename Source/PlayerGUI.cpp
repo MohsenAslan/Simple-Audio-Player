@@ -3,7 +3,8 @@
 PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     : playerAudio(audioRef)
 {
-    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton , &loopButton })
+    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton , &loopButton , &beginButton , &endButton
+        , &loopABButton , & setBookMarkButton ,& goToBookMarkButton })
     {
         btn->addListener(this);
         addAndMakeVisible(btn);
@@ -13,6 +14,20 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     volumeSlider.setValue(0.5);
     volumeSlider.addListener(this);
     addAndMakeVisible(volumeSlider);
+
+
+    positionSlider.setRange(0.0, 1.0, 0.01);
+    positionSlider.addListener(this);
+    addAndMakeVisible(positionSlider);
+
+    addAndMakeVisible(timeLabel);
+    timeLabel.setText("00:00:00", juce::dontSendNotification);
+    timeLabel.setJustificationType(juce::Justification::centred);
+
+
+    startTimerHz(30);
+   
+    
 
     muteButton.setButtonText("Mute");
     muteButton.addListener(this);
@@ -34,8 +49,22 @@ void PlayerGUI::resized()
     stopButton.setBounds(240, y, 80, 40);
     muteButton.setBounds(335, y, 70, 40);
     loopButton.setBounds(420, y, 80, 40);
+    beginButton.setBounds(525, y, 80, 40);
+    endButton.setBounds(625, y, 80, 40);
+    loopABButton.setBounds(725, y, 120, 40);
+    setBookMarkButton.setBounds(865, y, 80, 40);
+    goToBookMarkButton.setBounds(965, y, 80, 40);
 
-    volumeSlider.setBounds(20, 100, getWidth() - 40, 30);
+    
+
+    int labelWidth = 90;
+    int spacing = 10;
+    int sliderWidth = getWidth() - (40 + labelWidth + spacing);
+    positionSlider.setBounds(20, 500 ,sliderWidth, 30);
+    timeLabel.setBounds(positionSlider.getRight()+spacing, 500, labelWidth, 30);
+
+    volumeSlider.setBounds(20, 400, sliderWidth, 30);
+
 
     int y2 = 160;
     int buttonWidth = 100;
@@ -57,8 +86,12 @@ void PlayerGUI::buttonClicked(juce::Button* button)
             [this](const juce::FileChooser& fc)
             {
                 auto file = fc.getResult();
-                if (file.existsAsFile())
+                if (file.existsAsFile()) {
                     playerAudio.loadFile(file);
+
+
+                    positionSlider.setRange(0.0, playerAudio.getLengthInSecond(), 0.01); //-------->Silder position 
+                }
             });
     }
     else if (button == &restartButton)
@@ -81,12 +114,62 @@ void PlayerGUI::buttonClicked(juce::Button* button)
     
     else if (button == &loopButton)
     {
+        if (!playerAudio.isFileLoaded()) { // ->
+            return;
+        }
         playerAudio.toggleLoop();
 
         static bool loopOn2 = false;
         loopOn2 = !loopOn2;
 
-        loopButton.setButtonText(loopOn2 ? "Loop2: ON" : "Loop2: OFF");
+        loopButton.setButtonText(loopOn2 ? "Loop: ON" : "Loop: OFF");
+    }
+    else if (button == &beginButton){
+        stratLoop = true;
+        playerAudio.setPointA(positionSlider.getValue());
+
+    }
+    else if (button == &endButton) {
+        endLoop = true;
+        playerAudio.setPointB(positionSlider.getValue());
+        
+    }
+    else if (button == &loopABButton) {
+        if (!playerAudio.isFileLoaded()) {//->
+            return;
+        }
+        else if (stratLoop && endLoop) {
+            playerAudio.toggleLoopAB();
+            loopABButton.setButtonText(playerAudio.isLoopABEnable() ? "MiniLoop: ON" : "MiniLoop: OFF");
+        }
+    }
+    else if (button == &setBookMarkButton) {
+
+        playerAudio.setBookmark(positionSlider.getValue());
+
+    }
+    else if (button == &goToBookMarkButton) {
+
+        playerAudio.goToBookmark();
+    }
+
+}
+
+void PlayerGUI::timerCallback(){
+    if (playerAudio.isFileLoaded()) {
+       
+        double currentTime = playerAudio.getPosition(); // الوقت الحالي بالثواني
+        int hours = static_cast<int>(currentTime) / 3600;
+        int minutes = static_cast<int>(currentTime) / 60;
+        int seconds = static_cast<int>(currentTime) % 60;
+
+        juce::String timeText = juce::String::formatted("%02d:%02d:%02d",hours, minutes, seconds);
+        timeLabel.setText(timeText, juce::dontSendNotification);
+
+        // تحديث السلايدر عشان يتحرك مع الصوت
+        positionSlider.setValue(currentTime, juce::dontSendNotification);
+
+        playerAudio.loopBetweenTwoPoints();
     }
 
 }
@@ -97,4 +180,17 @@ void PlayerGUI::sliderValueChanged(juce::Slider* slider)
 {
     if (slider == &volumeSlider)
         playerAudio.setGain((float)slider->getValue());
+    
+    else if (slider == &positionSlider)
+    {
+        playerAudio.setPosition((float)slider->getValue());
+
+        // تحويل الثواني إلى دقائق:ثواني
+        int totalSeconds = (int)slider->getValue();
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+
+        timeLabel.setText(juce::String(minutes) + ":" + (seconds < 10 ? "0" : "") + juce::String(seconds),
+            juce::dontSendNotification);
+    }
 }
