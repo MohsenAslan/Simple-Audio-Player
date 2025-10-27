@@ -1,7 +1,7 @@
 #include <JuceHeader.h>
 #include "MainComponent.h"
 
-
+// Our application class
 class SimpleAudioPlayer : public juce::JUCEApplication
 {
 public:
@@ -10,7 +10,7 @@ public:
 
     void initialise(const juce::String&) override
     {
-        
+         // Create and show the main window
         mainWindow = std::make_unique<MainWindow>(getApplicationName());
     }
 
@@ -20,7 +20,8 @@ public:
     }
 
 private:
-    
+
+// The main window of the app
     class MainWindow : public juce::DocumentWindow
     {
     public:
