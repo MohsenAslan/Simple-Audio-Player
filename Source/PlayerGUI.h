@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "PlayerAudio.h"
+#include"PlaylistComponent.h"
 
 class PlayerGUI : public juce::Component,
     public juce::Button::Listener,
@@ -72,3 +73,4 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };
+
