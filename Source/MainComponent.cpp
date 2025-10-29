@@ -1,5 +1,5 @@
-﻿#include "MainComponent.h"
-
+#include <JuceHeader.h>
+#include "MainComponent.h"
 MainComponent::MainComponent()
 {
     //player لكل track
@@ -69,4 +69,5 @@ void MainComponent::resized()
 
     gui1.setBounds(top);
     gui2.setBounds(area);
+
 }
