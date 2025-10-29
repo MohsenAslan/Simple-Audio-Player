@@ -1,4 +1,4 @@
-#include "PlayerAudio.h"
+﻿#include "PlayerAudio.h"
 
 PlayerAudio::PlayerAudio()
 {
@@ -36,12 +36,25 @@ void PlayerAudio::loadFile(const juce::File& file)
 {
     if (auto* reader = formatManager.createReaderFor(file))
     {
-       double sampleRate = reader->sampleRate;
         transportSource.stop();
         transportSource.setSource(nullptr);
         readerSource.reset(new juce::AudioFormatReaderSource(reader, true));
-        transportSource.setSource(readerSource.get(), 0, nullptr, sampleRate);
+        transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
+
+        durationInSeconds = static_cast<double>(reader->lengthInSamples) / reader->sampleRate;
+
+        // قراءة metadata
+        auto metadata = reader->metadataValues;
+        title = metadata.getValue("title", file.getFileNameWithoutExtension());
+        artist = metadata.getValue("artist", "Unknown Artist");
+
         play();
+    }
+    else
+    {
+        title = "Invalid File";
+        artist = "";
+        durationInSeconds = 0.0;
     }
 }
 
@@ -171,3 +184,14 @@ void PlayerAudio::goToBookmark() {
     
 }
 
+bool PlayerAudio::isFileLoaded() const { return transportSource.getLengthInSeconds() > 0; }
+
+juce::String PlayerAudio::getTitle() const { return title; }
+juce::String PlayerAudio::getArtist() const { return artist; }
+juce::String PlayerAudio::getDurationString() const
+{
+    int totalSeconds = static_cast<int>(durationInSeconds);
+    int minutes = totalSeconds / 60;
+    int seconds = totalSeconds % 60;
+    return juce::String::formatted("%d:%02d", minutes, seconds);
+}

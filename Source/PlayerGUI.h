@@ -21,6 +21,7 @@ public:
     void timerCallback() override;
     void setGain(float gain);
     float getGain() const;
+    void updateMetadataDisplay();
     
 private:
     PlayerAudio& playerAudio;
@@ -59,6 +60,15 @@ private:
 
     bool stratLoop = false;
     bool endLoop = false;
+
+
+    PlaylistComponent playlist;
+    juce::TextButton loadPlaylistButton{ "Load Playlist" };
+    juce::TextButton playSelectedButton{ "Play Selected" };
+
+    juce::Label titleLabel;
+    juce::Label artistLabel;
+    juce::Label durationLabel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };

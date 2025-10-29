@@ -3,8 +3,9 @@
 PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     : playerAudio(audioRef)
 {
-    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton , &loopButton , &beginButton , &endButton
-        , &loopABButton , & setBookMarkButton ,& goToBookMarkButton })
+    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton,
+                       &goToStartButton, &goToEndButton, &loopButton, &beginButton, &endButton,
+                       &loopABButton, &setBookMarkButton, &goToBookMarkButton })
     {
         btn->addListener(this);
         addAndMakeVisible(btn);
@@ -15,6 +16,23 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     volumeSlider.addListener(this);
     addAndMakeVisible(volumeSlider);
 
+    titleLabel.setText("Title: ---", juce::dontSendNotification);
+    artistLabel.setText("Artist: ---", juce::dontSendNotification);
+    durationLabel.setText("Duration: ---", juce::dontSendNotification);
+
+    for (auto* lbl : { &titleLabel, &artistLabel, &durationLabel })
+    {
+        lbl->setColour(juce::Label::textColourId, juce::Colours::white);
+        lbl->setFont(juce::Font(16.0f));
+        addAndMakeVisible(lbl);
+    }
+
+    addAndMakeVisible(playlist);
+    addAndMakeVisible(loadPlaylistButton);
+    addAndMakeVisible(playSelectedButton);
+
+    loadPlaylistButton.addListener(this);
+    playSelectedButton.addListener(this);
 
     positionSlider.setRange(0.0, 1.0, 0.01);
     positionSlider.addListener(this);
@@ -24,10 +42,7 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     timeLabel.setText("00:00:00", juce::dontSendNotification);
     timeLabel.setJustificationType(juce::Justification::centred);
 
-
     startTimerHz(30);
-   
-    
 
     muteButton.setButtonText("Mute");
     muteButton.addListener(this);
@@ -43,35 +58,44 @@ void PlayerGUI::paint(juce::Graphics& g)
 
 void PlayerGUI::resized()
 {
-    int y = 20;
-    loadButton.setBounds(20, y, 100, 40);
-    restartButton.setBounds(140, y, 80, 40);
-    stopButton.setBounds(240, y, 80, 40);
-    muteButton.setBounds(335, y, 70, 40);
-    loopButton.setBounds(420, y, 80, 40);
-    beginButton.setBounds(525, y, 80, 40);
-    endButton.setBounds(625, y, 80, 40);
-    loopABButton.setBounds(725, y, 120, 40);
-    setBookMarkButton.setBounds(865, y, 80, 40);
-    goToBookMarkButton.setBounds(965, y, 80, 40);
-
-    
-
-    int labelWidth = 90;
-    int spacing = 10;
-    int sliderWidth = getWidth() - (40 + labelWidth + spacing);
-    positionSlider.setBounds(20, 500 ,sliderWidth, 30);
-    timeLabel.setBounds(positionSlider.getRight()+spacing, 500, labelWidth, 30);
-
-    volumeSlider.setBounds(20, 400, sliderWidth, 30);
+    int margin = 10;
+    int buttonHeight = 30;
+    int buttonWidth = 80;
+    int spacing = 5;
 
 
-    int y2 = 160;
-    int buttonWidth = 100;
-    playButton.setBounds(20, y2, buttonWidth, 40);
-    pauseButton.setBounds(130, y2, buttonWidth, 40);
-    goToStartButton.setBounds(240, y2, buttonWidth + 20, 40);
-    goToEndButton.setBounds(370, y2, buttonWidth + 20, 40);
+    int y = margin;
+    int x = margin;
+
+    for (auto* btn : { &loadButton, &restartButton, &stopButton, &muteButton,
+                       &loopButton, &beginButton, &endButton, &loopABButton,
+                       &setBookMarkButton, &goToBookMarkButton,
+                       &playButton, &pauseButton, &goToStartButton, &goToEndButton })
+    {
+        btn->setBounds(x, y, buttonWidth, buttonHeight);
+        x += buttonWidth + spacing;
+    }
+
+
+    y += buttonHeight + 20;
+    int sliderWidth = getWidth() - (2 * margin + 100);
+    volumeSlider.setBounds(margin, y, sliderWidth, 20);
+
+    y += 40;
+    positionSlider.setBounds(margin, y, sliderWidth, 20);
+    timeLabel.setBounds(positionSlider.getRight() + 10, y, 80, 20);
+
+
+    y += 40;
+    titleLabel.setBounds(margin, y, getWidth() - 40, 20);
+    artistLabel.setBounds(margin, y + 25, getWidth() - 40, 20);
+    durationLabel.setBounds(margin, y + 50, getWidth() - 40, 20);
+
+
+    y += 90;
+    loadPlaylistButton.setBounds(margin, y, 120, 30);
+    playSelectedButton.setBounds(margin + 130, y, 120, 30);
+    playlist.setBounds(margin, y + 40, getWidth() - 2 * margin, 120);
 }
 
 void PlayerGUI::buttonClicked(juce::Button* button)
@@ -86,11 +110,12 @@ void PlayerGUI::buttonClicked(juce::Button* button)
             [this](const juce::FileChooser& fc)
             {
                 auto file = fc.getResult();
-                if (file.existsAsFile()) {
+                if (file.existsAsFile())
+                {
                     playerAudio.loadFile(file);
+                    updateMetadataDisplay();
 
-
-                    positionSlider.setRange(0.0, playerAudio.getLengthInSecond(), 0.01); //-------->Silder position 
+                    positionSlider.setRange(0.0, playerAudio.getLengthInSecond(), 0.01);
                 }
             });
     }
@@ -152,6 +177,40 @@ void PlayerGUI::buttonClicked(juce::Button* button)
 
         playerAudio.goToBookmark();
     }
+    else if (button == &loadPlaylistButton)
+    {
+        fileChooser = std::make_unique<juce::FileChooser>(
+            "Select multiple audio files...", juce::File{}, "*.wav;*.mp3");
+
+        fileChooser->launchAsync(
+            juce::FileBrowserComponent::openMode |
+            juce::FileBrowserComponent::canSelectFiles |
+            juce::FileBrowserComponent::canSelectMultipleItems,
+            [this](const juce::FileChooser& fc)
+            {
+                auto results = fc.getResults();
+                for (auto file : results)
+                    playlist.addFile(file);
+            });
+    }
+    else if (button == &playSelectedButton)
+    {
+        int selected = playlist.getSelectedRow();
+        if (selected >= 0)
+        {
+            juce::File selectedFile = playlist.getFile(selected);
+            if (selectedFile.existsAsFile())
+            {
+                playerAudio.loadFile(selectedFile);
+                playerAudio.play();
+                updateMetadataDisplay();
+            }
+        }
+    }
+
+
+
+
 
 }
 
@@ -194,3 +253,9 @@ void PlayerGUI::sliderValueChanged(juce::Slider* slider)
             juce::dontSendNotification);
     }
 };
+void PlayerGUI::updateMetadataDisplay()
+{
+    titleLabel.setText("Title: " + playerAudio.getTitle(), juce::dontSendNotification);
+    artistLabel.setText("Artist: " + playerAudio.getArtist(), juce::dontSendNotification);
+    durationLabel.setText("Duration: " + playerAudio.getDurationString(), juce::dontSendNotification);
+}

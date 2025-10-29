@@ -48,12 +48,25 @@ public:
     void goToBookmark();
 
 
+    //------
+    juce::String getTitle() const;
+    juce::String getArtist() const;
+    juce::String getDurationString() const;
+
+
+
+
+
 private:
     juce::AudioFormatManager formatManager;
     std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
     juce::AudioFormatReader* reader = nullptr;
     juce::AudioTransportSource transportSource;
 
+
+    juce::String title = "---";
+    juce::String artist = "Unknown Artist";
+    double durationInSeconds = 0.0;
 
     double currentVolume = 1.0;     // الصوت الحالي
     double previousVolume = 1.0;    // الصوت قبل الكتم

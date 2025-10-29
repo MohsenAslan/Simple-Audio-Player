@@ -17,8 +17,12 @@ public:
     void resized() override;
 
 private:
-    PlayerAudio playerAudio;
-    PlayerGUI playerGUI{ playerAudio };
+    PlayerAudio player1;
+    PlayerGUI gui1{ player1 };
+
+
+    PlayerAudio player2;
+    PlayerGUI gui2{ player2 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
