@@ -1,4 +1,5 @@
 #include "PlayerGUI.h"
+#include "PlaylistComponent.h"
 
 PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     : playerAudio(audioRef)
