@@ -1,4 +1,4 @@
-#include <JuceHeader.h>
+
 #include "MainComponent.h"
 MainComponent::MainComponent()
 {
@@ -71,3 +71,4 @@ void MainComponent::resized()
     gui2.setBounds(area);
 
 }
+
