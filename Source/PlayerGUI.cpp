@@ -7,9 +7,7 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     // register formats for thumbnail and audio reading
     formatManager.registerBasicFormats();
 
-    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton,
-                       &goToStartButton, &goToEndButton, &loopButton, &beginButton, &endButton,
-                       &loopABButton, &setBookMarkButton, &goToBookMarkButton,& forwardButton,& backwardButton })
+    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton, &loopButton, &beginButton, &endButton, &loopABButton, &setBookMarkButton, &goToBookMarkButton, &forwardButton, &backwardButton })
     {
         btn->addListener(this);
         addAndMakeVisible(btn);
@@ -35,6 +33,9 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     artistLabel.setText("Artist: ---", juce::dontSendNotification);
     durationLabel.setText("Duration: ---", juce::dontSendNotification);
 
+    // bonus 2
+    setWantsKeyboardFocus(true);
+
     for (auto* lbl : { &titleLabel, &artistLabel, &durationLabel })
     {
         lbl->setColour(juce::Label::textColourId, juce::Colours::white);
@@ -45,10 +46,8 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     // Setup playlist inside viewport so it can scroll
     playlistViewport.setViewedComponent(&playlist, false);
     addAndMakeVisible(playlistViewport);
-
     addAndMakeVisible(loadPlaylistButton);
     addAndMakeVisible(playSelectedButton);
-
     loadPlaylistButton.addListener(this);
     playSelectedButton.addListener(this);
 
@@ -69,17 +68,14 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     auto deepViolet = juce::Colour::fromRGB(100, 0, 160);
 
     // الأزرار
-    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton,
-                       &goToStartButton, &goToEndButton, &loopButton, &beginButton, &endButton,
-                       &loopABButton, &setBookMarkButton, &goToBookMarkButton,
-                       &loadPlaylistButton, &playSelectedButton,& muteButton ,
-                   & forwardButton,& backwardButton })
+    for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton, &loopButton, &beginButton, &endButton, &loopABButton, &setBookMarkButton, &goToBookMarkButton, &loadPlaylistButton, &playSelectedButton, &muteButton, &forwardButton, &backwardButton })
     {
         btn->setColour(juce::TextButton::buttonColourId, deepViolet);
         btn->setColour(juce::TextButton::buttonOnColourId, accentYellow);
         btn->setColour(juce::TextButton::textColourOnId, juce::Colours::black);
         btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     }
+
     // apply same theme to playlist rows and background
     playlist.setTheme(deepViolet, accentYellow);
 
@@ -130,13 +126,13 @@ void PlayerGUI::paint(juce::Graphics& g)
     juce::ColourGradient backgroundGradient(
         juce::Colour::fromRGB(30, 0, 60), 0, 0,
         juce::Colour::fromRGB(50, 0, 80), 0, (float)getHeight(), false);
+
     g.setGradientFill(backgroundGradient);
     g.fillRect(getLocalBounds());
 
     // Draw waveform area at the bottom
     auto area = getLocalBounds();
     auto waveformArea = area.removeFromBottom(waveformHeight).reduced(10, 10);
-
     g.setColour(juce::Colours::black.withAlpha(0.25f));
     g.fillRect(waveformArea);
 
@@ -150,7 +146,6 @@ void PlayerGUI::paint(juce::Graphics& g)
         double currentTime = playerAudio.getPosition();
         double proportion = (totalLength > 0.0) ? (currentTime / totalLength) : 0.0;
         int cursorX = waveformArea.getX() + static_cast<int>(proportion * waveformArea.getWidth());
-
         g.setColour(juce::Colour::fromRGB(255, 215, 0)); // أصفر لمّاع
         g.drawLine((float)cursorX, (float)waveformArea.getY(), (float)cursorX, (float)waveformArea.getBottom(), 2.0f);
     }
@@ -171,22 +166,31 @@ void PlayerGUI::resized()
     int buttonHeight = 30;
     int buttonWidth = 80;
     int spacing = 5;
-
     int y = margin;
     int x = margin;
 
-    for (auto* btn : { &loadButton, &restartButton, &stopButton, &muteButton,
-                       &loopButton, &beginButton, &endButton, &loopABButton,
-                       &setBookMarkButton, &goToBookMarkButton,
-                       &playButton, &pauseButton, &goToStartButton, &goToEndButton,
-                   & forwardButton,& backwardButton })
+    for (auto* btn : { &loadButton, &restartButton, &stopButton, &muteButton, &loopButton, &beginButton, &endButton, &loopABButton, &setBookMarkButton, &goToBookMarkButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton, &forwardButton, &backwardButton })
     {
         btn->setBounds(x, y, buttonWidth, buttonHeight);
         x += buttonWidth + spacing;
+        if (x + buttonWidth > getWidth() - margin)
+        {
+            x = margin;
+            y += buttonHeight + spacing;
+        }
     }
 
-    y += buttonHeight + 20;
+    y += buttonHeight + 10;
 
+    // ===== الليبلز بتاعة المعلومات =====
+    titleLabel.setBounds(margin, y, getWidth() / 3, 20);
+    artistLabel.setBounds(getWidth() / 3 + margin, y, getWidth() / 3, 20);
+    durationLabel.setBounds(2 * getWidth() / 3 + margin, y, getWidth() / 3 - 2 * margin, 20);
+    y += 30;
+
+
+
+    // ===== السلايدرز =====
     int slidersHeight = 20;
     int sliderSpacing = 8;
     int timeLabelWidth = 80;
@@ -196,36 +200,58 @@ void PlayerGUI::resized()
 
     positionSlider.setBounds(sx, y, oneSliderW, slidersHeight);
     sx += oneSliderW + sliderSpacing;
-
     volumeSlider.setBounds(sx, y, oneSliderW, slidersHeight);
     sx += oneSliderW + sliderSpacing;
-
     speedSlider.setBounds(sx, y, oneSliderW, slidersHeight);
     speedLabel.setBounds(sx, y - 18, 60, 16);
-
     timeLabel.setBounds(getWidth() - margin - timeLabelWidth, y, timeLabelWidth, slidersHeight);
 
-    y += slidersHeight + 10;
+    y += slidersHeight + 20;
 
-    int bottomReserved = waveformHeight + 2 * margin;
-    int playlistTop = y + 40;
+    // ===== أزرار البلاي ليست =====
+    int playlistButtonW = 120;
+    loadPlaylistButton.setBounds(margin, y, playlistButtonW, 25);
+    playSelectedButton.setBounds(margin + playlistButtonW + spacing, y, playlistButtonW, 25);
+    y += 35;
+
+
+    // ===== مساحة البلاي ليست =====
+    int bottomReserved = 100; // مساحة كافية تحت للـ waveform
+    int playlistTop = y;
     int playlistHeight = getHeight() - playlistTop - bottomReserved;
-    if (playlistHeight < 80) playlistHeight = 80;
+    if (playlistHeight < 100)
+        playlistHeight = 100;
 
     playlistViewport.setBounds(margin, playlistTop, getWidth() - 2 * margin, playlistHeight);
     playlist.setSize(getWidth() - 2 * margin, playlistHeight);
+
+    // ------> 
+    int playlistBtnW = 120;
+    int labelY = playlistTop - 35;                // نفس السطر فوق أزرار البلاي ليست
+    int labelH = 24;
+    int gap = 8;
+
+    // مكان بداية الليبلز بعد الزرين
+    int labelsStartX = margin + (playlistBtnW * 2) + (gap * 3);
+    int labelW = (getWidth() - labelsStartX - margin) / 3;
+
+    // استخدمي الأسماء المعرّفة في الهيدر (titleLabel، artistLabel، durationLabel)
+    titleLabel.setBounds(labelsStartX, labelY, labelW, labelH);
+    artistLabel.setBounds(labelsStartX + labelW + gap, labelY, labelW, labelH);
+    durationLabel.setBounds(labelsStartX + 2 * (labelW + gap), labelY, labelW, labelH);
+
+    // ----------> 
+
+    // ===== تصغير الموجة =====
+    waveformHeight = 70;
 }
 
 void PlayerGUI::buttonClicked(juce::Button* button)
 {
-    // Removed the global/static per-click color toggle (it caused cross-button state
-    // and first-click inconsistencies). Toggle state is now handled per-button.
-
     if (button == &loadButton)
     {
         fileChooser = std::make_unique<juce::FileChooser>(
-            "Select an audio file...", juce::File{}, "*.wav;*.mp3");
-
+            "Select an audio file...", juce::File{}, ".wav;.mp3");
         fileChooser->launchAsync(
             juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
             [this](const juce::FileChooser& fc)
@@ -236,7 +262,6 @@ void PlayerGUI::buttonClicked(juce::Button* button)
                     playerAudio.loadFile(file);
                     updateMetadataDisplay();
                     positionSlider.setRange(0.0, playerAudio.getLengthInSecond(), 0.01);
-
                     thumbnail.clear();
                     thumbnail.setSource(new juce::FileInputSource(file));
                 }
@@ -256,13 +281,10 @@ void PlayerGUI::buttonClicked(juce::Button* button)
         playerAudio.goToEnd();
     else if (button == &muteButton)
     {
-        // audio state toggles; button is configured as a toggle button so its visual
-        // state is managed separately. Sync text / toggle state with underlying audio.
         playerAudio.toggleMute();
         muteButton.setButtonText(playerAudio.getMuteState() ? "Unmute" : "Mute");
         muteButton.setToggleState(playerAudio.getMuteState(), juce::dontSendNotification);
 
-        // ensure color matches new state
         auto accentYellow = juce::Colour::fromRGB(255, 215, 0);
         auto deepViolet = juce::Colour::fromRGB(100, 0, 160);
         bool on = muteButton.getToggleState();
@@ -276,8 +298,7 @@ void PlayerGUI::buttonClicked(juce::Button* button)
             return;
 
         playerAudio.toggleLoop();
-        // loopButton is a toggle button; JUCE toggles its state automatically when clicked.
-        // update its visual colour to match its toggle state:
+
         auto accentYellow = juce::Colour::fromRGB(255, 215, 0);
         auto deepViolet = juce::Colour::fromRGB(100, 0, 160);
         bool on = loopButton.getToggleState();
@@ -324,12 +345,9 @@ void PlayerGUI::buttonClicked(juce::Button* button)
     else if (button == &loadPlaylistButton)
     {
         fileChooser = std::make_unique<juce::FileChooser>(
-            "Select multiple audio files...", juce::File{}, "*.wav;*.mp3");
-
+            "Select multiple audio files...", juce::File{}, ".wav;.mp3");
         fileChooser->launchAsync(
-            juce::FileBrowserComponent::openMode |
-            juce::FileBrowserComponent::canSelectFiles |
-            juce::FileBrowserComponent::canSelectMultipleItems,
+            juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectMultipleItems,
             [this](const juce::FileChooser& fc)
             {
                 auto results = fc.getResults();
@@ -348,20 +366,19 @@ void PlayerGUI::buttonClicked(juce::Button* button)
                 playerAudio.loadFile(selectedFile);
                 playerAudio.play();
                 updateMetadataDisplay();
-
                 thumbnail.clear();
                 thumbnail.setSource(new juce::FileInputSource(selectedFile));
             }
         }
-       
-
     }
-    else if (button == &forwardButton) {
+    else if (button == &forwardButton)
+    {
         playerAudio.skipForward(10.0);
-        }
-    else if (button == &backwardButton) {
+    }
+    else if (button == &backwardButton)
+    {
         playerAudio.skipBackward(10.0);
-            }
+    }
 }
 
 void PlayerGUI::timerCallback()
@@ -376,7 +393,6 @@ void PlayerGUI::timerCallback()
         juce::String timeText = juce::String::formatted("%02d:%02d:%02d", hours, minutes, seconds);
         timeLabel.setText(timeText, juce::dontSendNotification);
         positionSlider.setValue(currentTime, juce::dontSendNotification);
-
         playerAudio.loopBetweenTwoPoints();
     }
 
@@ -390,16 +406,19 @@ void PlayerGUI::sliderValueChanged(juce::Slider* slider)
     else if (slider == &positionSlider)
     {
         playerAudio.setPosition((float)slider->getValue());
+
         int totalSeconds = (int)slider->getValue();
+        int hours = totalSeconds / 3600;
         int minutes = totalSeconds / 60;
         int seconds = totalSeconds % 60;
-        timeLabel.setText(juce::String(minutes) + ":" + (seconds < 10 ? "0" : "") + juce::String(seconds),
+
+        timeLabel.setText(
+            juce::String::formatted("%02d:%02d:%02d", hours, minutes, seconds),
             juce::dontSendNotification);
     }
     else if (slider == &speedSlider)
         playerAudio.setResamplingRatio(speedSlider.getValue());
 }
-
 void PlayerGUI::updateMetadataDisplay()
 {
     titleLabel.setText("Title: " + playerAudio.getTitle(), juce::dontSendNotification);
@@ -422,4 +441,19 @@ void PlayerGUI::mouseDown(const juce::MouseEvent& event)
             playerAudio.setPosition(newPos);
         }
     }
+}
+
+// bonus 2
+bool PlayerGUI::keyPressed(const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::spaceKey)
+        playerAudio.togglePlayPause();
+    else if (key == juce::KeyPress('l'))
+        playerAudio.toggleLoop();
+    else if (key == juce::KeyPress('m'))
+        playerAudio.toggleMute();
+    else if (key == juce::KeyPress('r'))
+        playerAudio.restart();
+
+    return true;
 }

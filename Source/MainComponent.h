@@ -1,27 +1,32 @@
 #pragma once
-#include <JuceHeader.h>
-#include "PlayerGUI.h"
-#include "PlayerAudio.h"
+#include "JuceHeader.h"
 
-class MainComponent : public juce::AudioAppComponent
+class PlaylistComponent : public juce::Component,
+    public juce::TableListBoxModel
 {
 public:
-    MainComponent();
-    ~MainComponent() override;
+    PlaylistComponent();
+    ~PlaylistComponent() override;
 
-    void prepareToPlay(int samplesPerBlockExpected, double sampleRate) override;
-    void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill) override;
-    void releaseResources() override;
-
-    void paint(juce::Graphics& g) override;
+    void paint(juce::Graphics&) override;
     void resized() override;
 
+    int getNumRows() override;
+    void paintRowBackground(juce::Graphics&, int rowNumber, int width, int height, bool rowIsSelected) override;
+    void paintCell(juce::Graphics&, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
+
+    void addFile(const juce::File& audioFile);
+    juce::File getFile(int index) const;
+    int getSelectedRow() const;
+
+    // Theme API — PlayerGUI calls this so playlist matches the same colors
+    void setTheme(const juce::Colour& deepViolet, const juce::Colour& accentYellow);
+
 private:
-    PlayerAudio player1;
-    PlayerGUI gui1{ player1 };
+    juce::TableListBox tableComponent;
+    juce::Array<juce::File> playlistFiles;
 
-    PlayerAudio player2;
-    PlayerGUI gui2{ player2 };
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
+    // theme defaults (will be overridden by setTheme)
+    juce::Colour themeDeepViolet{ juce::Colour::fromRGB(100, 0, 160) };
+    juce::Colour themeAccentYellow{ juce::Colour::fromRGB(255, 215, 0) };
 };

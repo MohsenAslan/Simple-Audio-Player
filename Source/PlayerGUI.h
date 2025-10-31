@@ -25,6 +25,9 @@ public:
 
     void mouseDown(const juce::MouseEvent& event) override; // to seek in waveform
 
+    // bonus 2
+    bool keyPressed(const juce::KeyPress& key) override;
+
 private:
     PlayerAudio& playerAudio;
 
@@ -43,7 +46,7 @@ private:
 
     // Bonus
     juce::TextButton setBookMarkButton{ "Set mark" };
-    juce::TextButton goToBookMarkButton{ "Go To mark" };
+    juce::TextButton goToBookMarkButton{ "Go To Book mark" };
 
 
     // Bonus
@@ -69,6 +72,8 @@ private:
     bool stratLoop = false;
     bool endLoop = false;
 
+
+
     // Playlist inside a viewport to allow scrolling
     PlaylistComponent playlist;
     juce::Viewport playlistViewport;
@@ -84,6 +89,8 @@ private:
     juce::AudioThumbnailCache thumbnailCache{ 5 };
     juce::AudioThumbnail thumbnail{ 512, formatManager, thumbnailCache };
     int waveformHeight = 120; // height of waveform area
+
+
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };

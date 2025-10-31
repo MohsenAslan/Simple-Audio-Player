@@ -48,6 +48,10 @@ public:
     void setBookmark(double newPositionInSecond);
     void goToBookmark();
 
+
+    // bonus 2
+    void togglePlayPause();
+
     // === Persistence (task) ===
     void saveLastSession(); // CHANGED: now uses PropertiesFile with unique key prefix
     void loadLastSession(); // CHANGED: reads the same keys
@@ -60,7 +64,7 @@ public:
 
     juce::String settingsKeyPrefix = "player_main_"; // ثابت دايمًا
 
-   
+
 
 
 
@@ -90,7 +94,8 @@ private:
     double pointB = 0.0;
     bool loopABEnabled = false;
 
-    double BookmarkPosition = 0.0;
+    double pos = 0.0;
+    std::vector<double> bookmarks;
 
     // CHANGED: prefix key used to store per-player values in the common PropertiesFile
    // e.g. "player_7ffdf1234_"

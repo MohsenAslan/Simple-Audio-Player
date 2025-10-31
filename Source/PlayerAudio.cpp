@@ -134,8 +134,8 @@ void PlayerAudio::toggleLoop()
 {
     if (!readerSource) return;
     isLooping = !isLooping;
-    // CHANGED: set looping based on isLooping
-    readerSource->setLooping(isLooping);
+
+    readerSource->setLooping(true);
 }
 
 double PlayerAudio::getTotalLength() { return transportSource.getTotalLength(); }
@@ -165,15 +165,33 @@ void PlayerAudio::loopBetweenTwoPoints()
     }
 }
 
-void PlayerAudio::setBookmark(double newPositionInSecond)
-{
-    BookmarkPosition = newPositionInSecond;
+void PlayerAudio::setBookmark(double pos) {
+    bookmarks.push_back(pos);
 }
+
 
 void PlayerAudio::goToBookmark()
 {
-    if (BookmarkPosition > 0.0)
-        transportSource.setPosition(BookmarkPosition);
+    if (bookmarks.empty()) return;
+
+    juce::PopupMenu menu;
+    for (int i = 0; i < bookmarks.size(); ++i) {
+        double totalSeconds = bookmarks[i];
+        int hours = static_cast<int>(totalSeconds / 3600);
+        int minutes = static_cast<int>((totalSeconds - hours * 3600) / 60);
+        int seconds = static_cast<int>(totalSeconds) % 60;
+        juce::String timeFormatted = juce::String::formatted("%02d:%02d:%02d", hours, minutes, seconds);
+
+        menu.addItem(i + 1, "Bookmark " + juce::String(i + 1) + " (" + timeFormatted + ")");
+    }
+
+    menu.showMenuAsync(juce::PopupMenu::Options(),
+        [this](int result)
+        {
+            if (result > 0 && result <= bookmarks.size()) {
+                setPosition(bookmarks[result - 1]);
+            }
+        });
 }
 
 void PlayerAudio::setResamplingRatio(double spede)
@@ -231,7 +249,7 @@ void PlayerAudio::loadLastSession()
             // ✅ أعد الضبط للموضع الأخير بدون تشغيل
             transportSource.setPosition(lastPosition);
 
-            // ⚙️ جهّز الصوت لكن ما تشغلوش
+            // ⚙ جهّز الصوت لكن ما تشغلوش
             transportSource.prepareToPlay(512, 44100);
 
             // 🔇 mute & loop states reset for safety
@@ -278,4 +296,15 @@ juce::String PlayerAudio::getDurationString() const
     int minutes = totalSeconds / 60;
     int seconds = totalSeconds % 60;
     return juce::String::formatted("%d:%02d", minutes, seconds);
+}
+
+
+// bonus 2
+void PlayerAudio::togglePlayPause() {
+    if (transportSource.isPlaying()) {
+        transportSource.stop();
+    }
+    else {
+        transportSource.start();
+    }
 }
