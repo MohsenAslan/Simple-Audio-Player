@@ -20,7 +20,6 @@ private:
     PlayerAudio player1;
     PlayerGUI gui1{ player1 };
 
-
     PlayerAudio player2;
     PlayerGUI gui2{ player2 };
 

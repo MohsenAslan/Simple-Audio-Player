@@ -10,79 +10,78 @@ public:
     void prepareToPlay(int samplesPerBlockExpected, double sampleRate);
     void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill);
     void releaseResources();
-
     void loadFile(const juce::File& file);
+
     void play();
     void stop();
     void restart();
     void pause();
     void goToStart();
-    void goToEnd();
 
     bool isFileLoaded() const;
 
-    // ✅ تعديل موحّد للصوت (Gain)
+    void goToEnd();
+
     void setGain(float gain);
     float getGain() const { return (float)currentVolume; }
     void toggleMute();
     bool getMuteState() const { return isMuted; }
+
     void toggleLoop();
 
-    //setLooping(bool shouldLoop);
-    //void setLooping(bool shouldLoop);
     void setPosition(double newPositionInSeconds);
     double getPosition() const;
     double getLengthInSecond() const;
-    void setPoistionA(double position);
-    double getCurrentPosition();
+
     double getTotalLength();
 
     void setPointA(double newPositionInSecond);
     void setPointB(double newPositionInSecond);
-    void loopBetweenTwoPoints();
     void toggleLoopAB();
     bool isLoopABEnable() const { return loopABEnabled; }
+    void loopBetweenTwoPoints();
 
-    // bonus 
+    void setResamplingRatio(double spede);
+
     void setBookmark(double newPositionInSecond);
     void goToBookmark();
 
+    // === Persistence (task) ===
+    void saveLastSession(); // CHANGED: now uses PropertiesFile with unique key prefix
+    void loadLastSession(); // CHANGED: reads the same keys
+    juce::String settingsKeyPrefix = "player_main_"; // ثابت دايمًا
 
-    //------
+
     juce::String getTitle() const;
     juce::String getArtist() const;
     juce::String getDurationString() const;
 
-
-
-
-
 private:
     juce::AudioFormatManager formatManager;
     std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
-    juce::AudioFormatReader* reader = nullptr;
     juce::AudioTransportSource transportSource;
+    juce::ResamplingAudioSource resamplingAudioSource{ &transportSource, false, 2 };
 
-
+    // file + metadata
+    juce::File lastLoadedFile;
     juce::String title = "---";
     juce::String artist = "Unknown Artist";
+
     double durationInSeconds = 0.0;
+    double currentVolume = 1.0;
+    double previousVolume = 1.0;
 
-    double currentVolume = 1.0;     // الصوت الحالي
-    double previousVolume = 1.0;    // الصوت قبل الكتم
     bool isMuted = false;
-
     bool isLooping = false;
+
     double pointA = 0.0;
     double pointB = 0.0;
     bool loopABEnabled = false;
 
-    // bonus 
     double BookmarkPosition = 0.0;
 
-
-    
+    // CHANGED: prefix key used to store per-player values in the common PropertiesFile
+   // e.g. "player_7ffdf1234_"
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)
-
 };

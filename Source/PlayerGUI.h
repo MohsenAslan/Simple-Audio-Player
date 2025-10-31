@@ -1,17 +1,16 @@
 #pragma once
 #include <JuceHeader.h>
 #include "PlayerAudio.h"
-#include"PlaylistComponent.h"
+#include "PlaylistComponent.h"
 
 class PlayerGUI : public juce::Component,
     public juce::Button::Listener,
     public juce::Slider::Listener,
-    public::juce::Timer
+    public juce::Timer
 {
 public:
     PlayerGUI(PlayerAudio& audioRef);
     ~PlayerGUI() override;
-
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -23,15 +22,17 @@ public:
     void setGain(float gain);
     float getGain() const;
     void updateMetadataDisplay();
-    
+
+    void mouseDown(const juce::MouseEvent& event) override; // to seek in waveform
+
 private:
     PlayerAudio& playerAudio;
 
     juce::TextButton loadButton{ "Load File" };
     juce::TextButton restartButton{ "Restart" };
     juce::TextButton stopButton{ "Stop" };
-    juce::TextButton playButton{ "play" };
-    juce::TextButton pauseButton{ "pause" };
+    juce::TextButton playButton{ "Play" };
+    juce::TextButton pauseButton{ "Pause" };
     juce::TextButton goToStartButton{ "|< Go To Start" };
     juce::TextButton goToEndButton{ ">| Go To End" };
     juce::TextButton loopButton{ "Loop" };
@@ -43,13 +44,12 @@ private:
     // Bonus
     juce::TextButton setBookMarkButton{ "Set mark" };
     juce::TextButton goToBookMarkButton{ "Go To mark" };
-    
-
 
     juce::Slider volumeSlider;
     juce::Slider positionSlider;
+    juce::Slider speedSlider;       // ? ????
+    juce::Label speedLabel;         // ? ????
     juce::Label timeLabel;
-    
 
     juce::TextButton muteButton{ "Mute" };
 
@@ -62,8 +62,9 @@ private:
     bool stratLoop = false;
     bool endLoop = false;
 
-
+    // Playlist inside a viewport to allow scrolling
     PlaylistComponent playlist;
+    juce::Viewport playlistViewport;
     juce::TextButton loadPlaylistButton{ "Load Playlist" };
     juce::TextButton playSelectedButton{ "Play Selected" };
 
@@ -71,6 +72,11 @@ private:
     juce::Label artistLabel;
     juce::Label durationLabel;
 
+    // Waveform / thumbnail
+    juce::AudioFormatManager formatManager;
+    juce::AudioThumbnailCache thumbnailCache{ 5 };
+    juce::AudioThumbnail thumbnail{ 512, formatManager, thumbnailCache };
+    int waveformHeight = 120; // height of waveform area
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };
-

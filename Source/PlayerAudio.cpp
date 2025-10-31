@@ -1,23 +1,57 @@
 ﻿#include "PlayerAudio.h"
 
+// CHANGED: global ApplicationProperties so JUCE manages single settings file for the app.
+// We use per-player key prefixes to avoid collisions when multiple PlayerAudio instances exist.
+static juce::ApplicationProperties appProperties;
+
 PlayerAudio::PlayerAudio()
 {
     formatManager.registerBasicFormats();
+
+    // ✅ إعداد التخزين مرة واحدة فقط
+    static bool propsInitialized = false;
+    if (!propsInitialized)
+    {
+        juce::PropertiesFile::Options options;
+        options.applicationName = "SimpleAudioPlayer";
+        options.filenameSuffix = "settings";
+        options.folderName = "SimpleAudioPlayer";
+        options.osxLibrarySubFolder = "Application Support";
+        options.storageFormat = juce::PropertiesFile::storeAsXML;
+
+        appProperties.setStorageParameters(options);
+        propsInitialized = true;
+    }
+
+    // ✅ اجعل المفتاح ثابتًا، مش بيعتمد على pointer
+    settingsKeyPrefix = "player_main_";
+
+    if (auto* userSettings = appProperties.getUserSettings())
+        DBG("PlayerAudio constructed. Settings file: " << userSettings->getFile().getFullPathName()
+            << "  keyPrefix=" << settingsKeyPrefix);
+
+    loadLastSession();
 }
 
 PlayerAudio::~PlayerAudio()
 {
+    // Save session on destruction
+    saveLastSession();
+
+    // Close files to avoid leak warnings (safe to call multiple times)
+    appProperties.closeFiles();
+
     transportSource.releaseResources();
 }
 
 void PlayerAudio::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
-    transportSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
+    resamplingAudioSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
 }
 
 void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
 {
-    transportSource.getNextAudioBlock(bufferToFill);
+    resamplingAudioSource.getNextAudioBlock(bufferToFill);
 
     if (!isLooping && transportSource.getCurrentPosition() >= transportSource.getLengthInSeconds() - 0.05)
     {
@@ -25,11 +59,13 @@ void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferTo
         transportSource.setPosition(0.0);
     }
 
+    // If AB loop enabled, enforce it
+    loopBetweenTwoPoints();
 }
 
 void PlayerAudio::releaseResources()
 {
-    transportSource.releaseResources();
+    resamplingAudioSource.releaseResources();
 }
 
 void PlayerAudio::loadFile(const juce::File& file)
@@ -43,10 +79,10 @@ void PlayerAudio::loadFile(const juce::File& file)
 
         durationInSeconds = static_cast<double>(reader->lengthInSamples) / reader->sampleRate;
 
-        // قراءة metadata
         auto metadata = reader->metadataValues;
         title = metadata.getValue("title", file.getFileNameWithoutExtension());
         artist = metadata.getValue("artist", "Unknown Artist");
+        lastLoadedFile = file;
 
         play();
     }
@@ -58,36 +94,13 @@ void PlayerAudio::loadFile(const juce::File& file)
     }
 }
 
-void PlayerAudio::play()
-{
-    transportSource.start();
-}
+void PlayerAudio::play() { transportSource.start(); }
+void PlayerAudio::stop() { transportSource.stop(); transportSource.setPosition(0.0); }
+void PlayerAudio::restart() { transportSource.setPosition(0.0); transportSource.start(); }
+void PlayerAudio::pause() { transportSource.stop(); }
+void PlayerAudio::goToStart() { transportSource.setPosition(0.0); }
 
-void PlayerAudio::stop()
-{
-    transportSource.stop();
-    transportSource.setPosition(0.0);
-}
-
-void PlayerAudio::restart()
-{
-    transportSource.setPosition(0.0);
-    transportSource.start();
-}
-
-void PlayerAudio::pause()
-{
-    transportSource.stop();
-}
-
-void PlayerAudio::goToStart()
-{
-    transportSource.setPosition(0.0);
-}
-
-bool PlayerAudio::isFileLoaded() const {
-    return transportSource.getLengthInSeconds() > 0;
-}
+bool PlayerAudio::isFileLoaded() const { return transportSource.getLengthInSeconds() > 0; }
 
 void PlayerAudio::goToEnd()
 {
@@ -119,75 +132,123 @@ void PlayerAudio::toggleMute()
 
 void PlayerAudio::toggleLoop()
 {
-    if (!readerSource)
-        return;
-
+    if (!readerSource) return;
     isLooping = !isLooping;
-
-
-    readerSource->setLooping(true);
-
+    // CHANGED: set looping based on isLooping
+    readerSource->setLooping(isLooping);
 }
 
-double PlayerAudio::getTotalLength(){
-    return transportSource.getTotalLength();
-}
+double PlayerAudio::getTotalLength() { return transportSource.getTotalLength(); }
 
-void PlayerAudio::setPosition(double newPositionInSecond) {
+void PlayerAudio::setPosition(double newPositionInSecond)
+{
     transportSource.setPosition(newPositionInSecond);
-
-    
-}
-double PlayerAudio::getPosition() const{
-    return transportSource.getCurrentPosition() ;
-}
-double PlayerAudio::getLengthInSecond() const {
-   
-    return transportSource.getLengthInSeconds();
 }
 
-void PlayerAudio::setPointA(double newPositionInSecond) {
+double PlayerAudio::getPosition() const { return transportSource.getCurrentPosition(); }
+double PlayerAudio::getLengthInSecond() const { return transportSource.getLengthInSeconds(); }
 
-    pointA = newPositionInSecond;
-}
+void PlayerAudio::setPointA(double newPositionInSecond) { pointA = newPositionInSecond; }
+void PlayerAudio::setPointB(double newPositionInSecond) { pointB = newPositionInSecond; }
 
-void PlayerAudio::setPointB(double newPositionInSecond) {
+void PlayerAudio::toggleLoopAB() { loopABEnabled = !loopABEnabled; }
 
-    pointB = newPositionInSecond;
-}
-
-void PlayerAudio::toggleLoopAB() {
-
-    loopABEnabled = !loopABEnabled;
-}
-void PlayerAudio::loopBetweenTwoPoints() {
-    if (loopABEnabled &&transportSource.isPlaying()&& pointB> pointA && (pointB - pointA)>0.1) {
-         
+void PlayerAudio::loopBetweenTwoPoints()
+{
+    if (loopABEnabled && transportSource.isPlaying() && pointB > pointA && (pointB - pointA) > 0.1)
+    {
         double currentPosition = transportSource.getCurrentPosition();
-
-        if (currentPosition >= pointB) {
+        if (currentPosition >= pointB)
+        {
             transportSource.setPosition(pointA);
         }
-
     }
 }
 
-void PlayerAudio::setBookmark(double newPositionInSecond) {
+void PlayerAudio::setBookmark(double newPositionInSecond)
+{
     BookmarkPosition = newPositionInSecond;
-    
 }
 
-void PlayerAudio::goToBookmark() {
-    if (BookmarkPosition > 0.0) {
+void PlayerAudio::goToBookmark()
+{
+    if (BookmarkPosition > 0.0)
         transportSource.setPosition(BookmarkPosition);
-    }
-    
 }
 
-bool PlayerAudio::isFileLoaded() const { return transportSource.getLengthInSeconds() > 0; }
+void PlayerAudio::setResamplingRatio(double spede)
+{
+    resamplingAudioSource.setResamplingRatio(spede);
+}
+
+// =====================================================
+// CHANGED: Save & Load Last Session using ApplicationProperties
+// keys are stored as: settingsKeyPrefix + "lastFile" / "lastPosition"
+// =====================================================
+
+void PlayerAudio::saveLastSession()
+{
+    if (auto* settings = appProperties.getUserSettings())
+    {
+        // 🔹 احفظ باستخدام key ثابت
+        if (lastLoadedFile.existsAsFile())
+            settings->setValue(settingsKeyPrefix + "lastFile", lastLoadedFile.getFullPathName());
+
+        settings->setValue(settingsKeyPrefix + "lastPosition", transportSource.getCurrentPosition());
+        settings->saveIfNeeded();
+
+        DBG("💾 Session saved: " << lastLoadedFile.getFileName()
+            << " @ " << transportSource.getCurrentPosition());
+    }
+}
+
+void PlayerAudio::loadLastSession()
+{
+    juce::PropertiesFile::Options options;
+    options.applicationName = "SimpleAudioPlayer";
+    options.filenameSuffix = "settings";
+    options.osxLibrarySubFolder = "Application Support";
+    options.folderName = "SimpleAudioPlayer";
+
+    juce::ApplicationProperties appProperties;
+    appProperties.setStorageParameters(options);
+
+    auto* props = appProperties.getUserSettings();
+
+    juce::String lastFilePath = props->getValue(settingsKeyPrefix + "lastFile");
+    double lastPosition = props->getDoubleValue(settingsKeyPrefix + "lastPosition", 0.0);
+
+    if (lastFilePath.isNotEmpty())
+    {
+        juce::File file(lastFilePath);
+        if (file.existsAsFile())
+        {
+            loadFile(file);
+
+            // ✋ تأكد إن التشغيل متوقف
+            transportSource.stop();
+
+            // ✅ أعد الضبط للموضع الأخير بدون تشغيل
+            transportSource.setPosition(lastPosition);
+
+            // ⚙️ جهّز الصوت لكن ما تشغلوش
+            transportSource.prepareToPlay(512, 44100);
+
+            // 🔇 mute & loop states reset for safety
+            isMuted = false;
+            transportSource.setGain((float)currentVolume);
+            isLooping = false;
+        }
+    }
+}
+
+
+
+// =====================================================
 
 juce::String PlayerAudio::getTitle() const { return title; }
 juce::String PlayerAudio::getArtist() const { return artist; }
+
 juce::String PlayerAudio::getDurationString() const
 {
     int totalSeconds = static_cast<int>(durationInSeconds);

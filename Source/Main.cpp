@@ -16,7 +16,19 @@ public:
 
     void shutdown() override
     {
-        mainWindow = nullptr; 
+        // ? Just close the main window
+        mainWindow = nullptr;
+
+        // ? Save settings to disk (this uses JUCE global function)
+        juce::PropertiesFile::Options options;
+        options.applicationName = "SimpleAudioPlayer";
+        options.filenameSuffix = "settings";
+        options.osxLibrarySubFolder = "Application Support";
+        options.folderName = "SimpleAudioPlayer";
+
+        juce::ApplicationProperties props;
+        props.setStorageParameters(options);
+        props.saveIfNeeded(); // ?? this forces JUCE to write .settings to disk
     }
 
 private:
@@ -31,9 +43,13 @@ private:
                 DocumentWindow::allButtons)
         {
             setUsingNativeTitleBar(true);
+
             setContentOwned(new MainComponent(), true); // MainComponent = our UI + logic
-            centreWithSize(1300, 750);
+
+            centreWithSize(1500, 750);
+
             setVisible(true);
+
         }
 
         void closeButtonPressed() override
