@@ -41,6 +41,8 @@ public:
     bool isLoopABEnable() const { return loopABEnabled; }
     void loopBetweenTwoPoints();
 
+
+
     void setResamplingRatio(double spede);
 
     void setBookmark(double newPositionInSecond);
@@ -49,7 +51,17 @@ public:
     // === Persistence (task) ===
     void saveLastSession(); // CHANGED: now uses PropertiesFile with unique key prefix
     void loadLastSession(); // CHANGED: reads the same keys
+
+
+    //+ - 10 s
+    void skipForward(double seconds);
+    void skipBackward(double second);
+
+
     juce::String settingsKeyPrefix = "player_main_"; // ثابت دايمًا
+
+   
+
 
 
     juce::String getTitle() const;

@@ -9,7 +9,7 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
 
     for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton,
                        &goToStartButton, &goToEndButton, &loopButton, &beginButton, &endButton,
-                       &loopABButton, &setBookMarkButton, &goToBookMarkButton })
+                       &loopABButton, &setBookMarkButton, &goToBookMarkButton,& forwardButton,& backwardButton })
     {
         btn->addListener(this);
         addAndMakeVisible(btn);
@@ -72,7 +72,8 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton,
                        &goToStartButton, &goToEndButton, &loopButton, &beginButton, &endButton,
                        &loopABButton, &setBookMarkButton, &goToBookMarkButton,
-                       &loadPlaylistButton, &playSelectedButton, &muteButton })
+                       &loadPlaylistButton, &playSelectedButton,& muteButton ,
+                   & forwardButton,& backwardButton })
     {
         btn->setColour(juce::TextButton::buttonColourId, deepViolet);
         btn->setColour(juce::TextButton::buttonOnColourId, accentYellow);
@@ -177,7 +178,8 @@ void PlayerGUI::resized()
     for (auto* btn : { &loadButton, &restartButton, &stopButton, &muteButton,
                        &loopButton, &beginButton, &endButton, &loopABButton,
                        &setBookMarkButton, &goToBookMarkButton,
-                       &playButton, &pauseButton, &goToStartButton, &goToEndButton })
+                       &playButton, &pauseButton, &goToStartButton, &goToEndButton,
+                   & forwardButton,& backwardButton })
     {
         btn->setBounds(x, y, buttonWidth, buttonHeight);
         x += buttonWidth + spacing;
@@ -351,7 +353,15 @@ void PlayerGUI::buttonClicked(juce::Button* button)
                 thumbnail.setSource(new juce::FileInputSource(selectedFile));
             }
         }
+       
+
     }
+    else if (button == &forwardButton) {
+        playerAudio.skipForward(10.0);
+        }
+    else if (button == &backwardButton) {
+        playerAudio.skipBackward(10.0);
+            }
 }
 
 void PlayerGUI::timerCallback()

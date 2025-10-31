@@ -241,6 +241,29 @@ void PlayerAudio::loadLastSession()
         }
     }
 }
+void PlayerAudio::skipForward(double seconds)
+{
+    double current = transportSource.getCurrentPosition();
+    double length = transportSource.getLengthInSeconds();
+    double newPos = current + seconds;
+
+    if (newPos < length)
+        transportSource.setPosition(newPos);
+    else
+        transportSource.setPosition(length);
+}
+
+void PlayerAudio::skipBackward(double seconds)
+{
+    double current = transportSource.getCurrentPosition();
+    double newPos = current - seconds;
+
+    if (newPos > 0)
+        transportSource.setPosition(newPos);
+    else
+        transportSource.setPosition(0.0);
+}
+
 
 
 

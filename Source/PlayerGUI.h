@@ -45,6 +45,13 @@ private:
     juce::TextButton setBookMarkButton{ "Set mark" };
     juce::TextButton goToBookMarkButton{ "Go To mark" };
 
+
+    // Bonus
+  //---------------------------------------------------
+    juce::TextButton forwardButton{ ">> +10s" };
+    juce::TextButton backwardButton{ "<< -10s" };
+    //----------------------------------------------------
+
     juce::Slider volumeSlider;
     juce::Slider positionSlider;
     juce::Slider speedSlider;       // ? ????
