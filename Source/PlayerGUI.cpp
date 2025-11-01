@@ -251,7 +251,7 @@ void PlayerGUI::buttonClicked(juce::Button* button)
     if (button == &loadButton)
     {
         fileChooser = std::make_unique<juce::FileChooser>(
-            "Select an audio file...", juce::File{}, ".wav;.mp3");
+            "Select an audio file...", juce::File{}, "*.wav;*.mp3");
         fileChooser->launchAsync(
             juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
             [this](const juce::FileChooser& fc)
@@ -345,7 +345,7 @@ void PlayerGUI::buttonClicked(juce::Button* button)
     else if (button == &loadPlaylistButton)
     {
         fileChooser = std::make_unique<juce::FileChooser>(
-            "Select multiple audio files...", juce::File{}, ".wav;.mp3");
+            "Select multiple audio files...", juce::File{}, "*.wav;*.mp3");
         fileChooser->launchAsync(
             juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectMultipleItems,
             [this](const juce::FileChooser& fc)
