@@ -1,4 +1,8 @@
 ﻿#include "PlayerAudio.h"
+#include <taglib/fileref.h>           //  لقراءة الميتاداتا
+#include <taglib/tag.h>               //  للوصول إلى البيانات (title, artist, album)
+#include <taglib/audioproperties.h>   //  لقراءة خصائص الصوت (المدة، إلخ)
+
 
 // CHANGED: global ApplicationProperties so JUCE manages single settings file for the app.
 // We use per-player key prefixes to avoid collisions when multiple PlayerAudio instances exist.
@@ -68,6 +72,8 @@ void PlayerAudio::releaseResources()
     resamplingAudioSource.releaseResources();
 }
 
+// ✅ تحميل ملف صوت وقراءة الميتاداتا باستخدام TagLib
+// =====================================================
 void PlayerAudio::loadFile(const juce::File& file)
 {
     if (auto* reader = formatManager.createReaderFor(file))
@@ -78,11 +84,32 @@ void PlayerAudio::loadFile(const juce::File& file)
         transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
 
         durationInSeconds = static_cast<double>(reader->lengthInSamples) / reader->sampleRate;
-
-        auto metadata = reader->metadataValues;
-        title = metadata.getValue("title", file.getFileNameWithoutExtension());
-        artist = metadata.getValue("artist", "Unknown Artist");
         lastLoadedFile = file;
+
+        // 🔹 قراءة الميتاداتا من TagLib بأمان
+        TagLib::FileRef f(file.getFullPathName().toRawUTF8());
+        if (!f.isNull() && f.tag())
+        {
+            TagLib::Tag* tag = f.tag();
+            TagLib::AudioProperties* props = f.audioProperties();
+
+            title = juce::String::fromUTF8(tag->title().toCString(true));
+            artist = juce::String::fromUTF8(tag->artist().toCString(true));
+            album = juce::String::fromUTF8(tag->album().toCString(true));
+
+            if (title.isEmpty())  title = file.getFileNameWithoutExtension();
+            if (artist.isEmpty()) artist = "Unknown Artist";
+            if (album.isEmpty())  album = "Unknown Album";
+
+            if (props)
+                durationInSeconds = props->length();
+        }
+        else
+        {
+            title = file.getFileNameWithoutExtension();
+            artist = "Unknown Artist";
+            album = "Unknown Album";
+        }
 
         play();
     }
@@ -90,10 +117,10 @@ void PlayerAudio::loadFile(const juce::File& file)
     {
         title = "Invalid File";
         artist = "";
+        album = "";
         durationInSeconds = 0.0;
     }
 }
-
 void PlayerAudio::play() { transportSource.start(); }
 void PlayerAudio::stop() { transportSource.stop(); transportSource.setPosition(0.0); }
 void PlayerAudio::restart() { transportSource.setPosition(0.0); transportSource.start(); }
@@ -285,10 +312,12 @@ void PlayerAudio::skipBackward(double seconds)
 
 
 
+
 // =====================================================
 
 juce::String PlayerAudio::getTitle() const { return title; }
 juce::String PlayerAudio::getArtist() const { return artist; }
+
 
 juce::String PlayerAudio::getDurationString() const
 {

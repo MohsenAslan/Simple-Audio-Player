@@ -78,10 +78,13 @@ private:
     juce::AudioTransportSource transportSource;
     juce::ResamplingAudioSource resamplingAudioSource{ &transportSource, false, 2 };
 
+   
     // file + metadata
     juce::File lastLoadedFile;
     juce::String title = "---";
     juce::String artist = "Unknown Artist";
+    juce::String album = "Unknown Album";
+
 
     double durationInSeconds = 0.0;
     double currentVolume = 1.0;
