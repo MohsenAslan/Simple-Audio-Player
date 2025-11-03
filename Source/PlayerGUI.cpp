@@ -1,11 +1,26 @@
 #include "PlayerGUI.h"
 #include "PlaylistComponent.h"
+#include <array> // added for safe range-based loops that use fixed-size arrays
+
+// small vertical offset to raise the waveform slightly
+static constexpr int kWaveformVerticalOffset = 40;
 
 PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     : playerAudio(audioRef)
 {
     // register formats for thumbnail and audio reading
     formatManager.registerBasicFormats();
+
+    // Put volume/speed as vertical sliders (they will sit to the sides of the waveform)
+    volumeSlider.setSliderStyle(juce::Slider::LinearVertical);
+    volumeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 48, 18);
+
+    speedSlider.setSliderStyle(juce::Slider::LinearVertical);
+    speedSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 48, 18);
+
+    // position slider is horizontal and we hide its textbox (timeLabel shows the time)
+    positionSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    positionSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
 
     for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton, &loopButton, &beginButton, &endButton, &loopABButton, &setBookMarkButton, &goToBookMarkButton, &forwardButton, &backwardButton })
     {
@@ -17,6 +32,12 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     volumeSlider.setValue(0.5);
     volumeSlider.addListener(this);
     addAndMakeVisible(volumeSlider);
+
+    // volume label
+    volumeLabel.setText("Volume", juce::dontSendNotification);
+    volumeLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+    volumeLabel.setFont(juce::Font(14.0f));
+    addAndMakeVisible(volumeLabel);
 
     // ✅ Speed Slider
     speedSlider.setRange(0.5, 2.0, 0.01);
@@ -36,16 +57,22 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     // bonus 2
     setWantsKeyboardFocus(true);
 
-    for (auto* lbl : { &titleLabel, &artistLabel, &durationLabel })
+    // Use std::array to avoid braced-init-list deduction issues on some compilers
     {
-        lbl->setColour(juce::Label::textColourId, juce::Colours::white);
-        lbl->setFont(juce::Font(16.0f));
-        addAndMakeVisible(lbl);
+        std::array<juce::Label*, 3> lbls = { &titleLabel, &artistLabel, &durationLabel };
+        for (auto* lbl : lbls)
+        {
+            lbl->setColour(juce::Label::textColourId, juce::Colours::white);
+            lbl->setFont(juce::Font(16.0f));
+            addAndMakeVisible(lbl);
+        }
     }
 
     // Setup playlist inside viewport so it can scroll
     playlistViewport.setViewedComponent(&playlist, false);
     addAndMakeVisible(playlistViewport);
+
+    // We'll move these two controls above the playlist panel in resized()
     addAndMakeVisible(loadPlaylistButton);
     addAndMakeVisible(playSelectedButton);
     loadPlaylistButton.addListener(this);
@@ -64,20 +91,22 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     addAndMakeVisible(muteButton);
 
     // 🎨 === تلوين الثيم البنفسجي والأصفر ===
-    auto accentYellow = juce::Colour::fromRGB(255, 215, 0);
-    auto deepViolet = juce::Colour::fromRGB(100, 0, 160);
+    // Move theme colours into members so paint() can use them.
+    // They already have sensible defaults in the header; assign again to keep existing behaviour.
+    themeAccentYellow = juce::Colour::fromRGB(255, 215, 0);
+    themeDeepViolet  = juce::Colour::fromRGB(100, 0, 160);
 
     // الأزرار
     for (auto* btn : { &loadButton, &restartButton, &stopButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton, &loopButton, &beginButton, &endButton, &loopABButton, &setBookMarkButton, &goToBookMarkButton, &loadPlaylistButton, &playSelectedButton, &muteButton, &forwardButton, &backwardButton })
     {
-        btn->setColour(juce::TextButton::buttonColourId, deepViolet);
-        btn->setColour(juce::TextButton::buttonOnColourId, accentYellow);
+        btn->setColour(juce::TextButton::buttonColourId, themeDeepViolet);
+        btn->setColour(juce::TextButton::buttonOnColourId, themeAccentYellow);
         btn->setColour(juce::TextButton::textColourOnId, juce::Colours::black);
         btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     }
 
     // apply same theme to playlist rows and background
-    playlist.setTheme(deepViolet, accentYellow);
+    playlist.setTheme(themeDeepViolet, themeAccentYellow);
 
     // Configure buttons that represent persistent toggle states so their color
     // will reflect on/off (deepViolet <-> accentYellow)
@@ -93,7 +122,7 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     auto applyToggleColour = [&](juce::TextButton& b)
         {
             bool on = b.getToggleState();
-            b.setColour(juce::TextButton::buttonColourId, on ? accentYellow : deepViolet);
+            b.setColour(juce::TextButton::buttonColourId, on ? themeAccentYellow : themeDeepViolet);
             b.setColour(juce::TextButton::textColourOffId, on ? juce::Colours::black : juce::Colours::white);
         };
 
@@ -101,19 +130,25 @@ PlayerGUI::PlayerGUI(PlayerAudio& audioRef)
     applyToggleColour(loopButton);
     applyToggleColour(loopABButton);
 
-    // السلايدر
+    // السلايدر (colors only — styles set above)
     for (auto* slider : { &volumeSlider, &positionSlider, &speedSlider })
     {
-        slider->setColour(juce::Slider::thumbColourId, accentYellow);
-        slider->setColour(juce::Slider::trackColourId, deepViolet);
+        slider->setColour(juce::Slider::thumbColourId, themeAccentYellow);
+        slider->setColour(juce::Slider::trackColourId, themeDeepViolet);
         slider->setColour(juce::Slider::backgroundColourId, juce::Colour::fromRGB(40, 0, 60));
     }
 
     // الليبلز
-    for (auto* lbl : { &titleLabel, &artistLabel, &durationLabel, &speedLabel, &timeLabel })
     {
-        lbl->setColour(juce::Label::textColourId, accentYellow);
+        std::array<juce::Label*, 6> lbls = { &titleLabel, &artistLabel, &durationLabel, &speedLabel, &timeLabel, &volumeLabel };
+        for (auto* lbl : lbls)
+        {
+            lbl->setColour(juce::Label::textColourId, themeAccentYellow);
+        }
     }
+
+    // make waveform taller by default (will be clamped in resized)
+    waveformHeight = 180;
 
     startTimerHz(30);
 }
@@ -130,23 +165,41 @@ void PlayerGUI::paint(juce::Graphics& g)
     g.setGradientFill(backgroundGradient);
     g.fillRect(getLocalBounds());
 
-    // Draw waveform area at the bottom
-    auto area = getLocalBounds();
-    auto waveformArea = area.removeFromBottom(waveformHeight).reduced(10, 10);
+    // layout: reserve a vertical playlist on the right, draw waveform in left/main area
+    int margin = 10;
+    int rightPanelWidth = std::max(220, getWidth() / 5); // playlist panel width (small on the right)
+
+    // left/main area dimensions (matches resized())
+    int leftAreaX = margin;
+    int leftAreaW = getWidth() - (2 * margin) - rightPanelWidth;
+    int leftAreaRight = leftAreaX + leftAreaW;
+
+    // Waveform full rect (aligned to bottom of main/left area, then raised by offset)
+    juce::Rectangle<int> waveformFullRect(leftAreaX, getHeight() - margin - waveformHeight - kWaveformVerticalOffset, leftAreaW, waveformHeight);
+
+    // make waveform narrower (70% of the available main width) and center it horizontally
+    int targetWidth = static_cast<int>(waveformFullRect.getWidth() * 0.7f);
+    int horizPad = (waveformFullRect.getWidth() - targetWidth) / 2;
+    juce::Rectangle<int> waveformArea = waveformFullRect.reduced(horizPad, 4);
+
+    // subtle background for waveform
     g.setColour(juce::Colours::black.withAlpha(0.25f));
-    g.fillRect(waveformArea);
+    g.fillRoundedRectangle((float)waveformArea.getX() - 4.0f, (float)waveformArea.getY() - 4.0f,
+                           (float)waveformArea.getWidth() + 8.0f, (float)waveformArea.getHeight() + 8.0f, 6.0f);
 
     if (thumbnail.getTotalLength() > 0.0)
     {
-        g.setColour(juce::Colour::fromRGB(200, 180, 255)); // بنفسجي فاتح للموجة
+        // Swap theme: waveform -> accent yellow, cursor -> deep violet
+        g.setColour(themeAccentYellow.withAlpha(0.95f)); // bright accent for waveform
+        // drawChannels into the smaller, centered waveform area
         thumbnail.drawChannels(g, waveformArea.reduced(4), 0.0, thumbnail.getTotalLength(), 1.0f);
 
-        // draw current position cursor
+        // draw current position cursor relative to the centered waveformArea
         double totalLength = thumbnail.getTotalLength();
         double currentTime = playerAudio.getPosition();
         double proportion = (totalLength > 0.0) ? (currentTime / totalLength) : 0.0;
         int cursorX = waveformArea.getX() + static_cast<int>(proportion * waveformArea.getWidth());
-        g.setColour(juce::Colour::fromRGB(255, 215, 0)); // أصفر لمّاع
+        g.setColour(themeDeepViolet); // use violet for cursor
         g.drawLine((float)cursorX, (float)waveformArea.getY(), (float)cursorX, (float)waveformArea.getBottom(), 2.0f);
     }
     else
@@ -156,94 +209,171 @@ void PlayerGUI::paint(juce::Graphics& g)
     }
 
     // لمعة حول الإطار
-    g.setColour(juce::Colour::fromRGB(255, 215, 0).withAlpha(0.3f));
+    g.setColour(themeAccentYellow.withAlpha(0.3f));
     g.drawRect(getLocalBounds().reduced(4), 2.0f);
 }
 
 void PlayerGUI::resized()
 {
     int margin = 10;
-    int buttonHeight = 30;
-    int buttonWidth = 80;
-    int spacing = 5;
+    int smallBtnH = 28;
+    int smallBtnW = 80;
+    int spacing = 8;
     int y = margin;
     int x = margin;
 
-    for (auto* btn : { &loadButton, &restartButton, &stopButton, &muteButton, &loopButton, &beginButton, &endButton, &loopABButton, &setBookMarkButton, &goToBookMarkButton, &playButton, &pauseButton, &goToStartButton, &goToEndButton, &forwardButton, &backwardButton })
+    // reserve a vertical playlist panel on the right
+    int rightPanelWidth = std::max(220, getWidth() / 5);
+    int leftAreaWidth = getWidth() - (2 * margin) - rightPanelWidth;
+
+    // ========== top small buttons (exclude the main large controls) ==========
+    // Layout small buttons in centered rows to make the window symmetric
+    std::vector<juce::Button*> smallButtons = {
+        &loadButton,
+        &goToStartButton,
+        &goToEndButton,
+        &loopButton,
+        &muteButton,
+        &beginButton,
+        &endButton,
+        &loopABButton,
+        &setBookMarkButton,
+        &goToBookMarkButton,
+        &forwardButton,
+        &backwardButton
+    };
+
+    int maxPerRow = std::max(1, (leftAreaWidth + spacing) / (smallBtnW + spacing));
+    int idx = 0;
+    int rowY = y;
+    while (idx < (int)smallButtons.size())
     {
-        btn->setBounds(x, y, buttonWidth, buttonHeight);
-        x += buttonWidth + spacing;
-        if (x + buttonWidth > getWidth() - margin)
+        int remain = (int)smallButtons.size() - idx;
+        int countInRow = std::min(maxPerRow, remain);
+        int rowWidth = countInRow * smallBtnW + (countInRow - 1) * spacing;
+        int startX = margin + std::max(0, (leftAreaWidth - rowWidth) / 2);
+
+        int curX = startX;
+        for (int c = 0; c < countInRow; ++c)
         {
-            x = margin;
-            y += buttonHeight + spacing;
+            smallButtons[idx]->setBounds(curX, rowY, smallBtnW, smallBtnH);
+            curX += smallBtnW + spacing;
+            ++idx;
         }
+
+        rowY += smallBtnH + spacing;
     }
 
-    y += buttonHeight + 10;
+    // compute y after placing small buttons
+    y = rowY;
 
-    // ===== الليبلز بتاعة المعلومات =====
-    titleLabel.setBounds(margin, y, getWidth() / 3, 20);
-    artistLabel.setBounds(getWidth() / 3 + margin, y, getWidth() / 3, 20);
-    durationLabel.setBounds(2 * getWidth() / 3 + margin, y, getWidth() / 3 - 2 * margin, 20);
+    // ===== make the very important buttons larger and centered in the main area =====
+    // important buttons: play, pause, stop, restart
+    const int bigW = 96;
+    const int bigH = 48;
+    const int bigSpacing = 16;
+
+    // Make the Play button slightly narrower so it remains fully visible.
+    const int playW = bigW - 18;   // adjust this value to taste
+    const int otherW = bigW;
+
+    int totalBigW = playW + otherW * 3 + bigSpacing * 3;
+    int bigStartX = margin + std::max(0, (leftAreaWidth - totalBigW) / 2);
+    int bigY = y + 12; // place them a bit below the small buttons
+
+    playButton.setBounds(bigStartX, bigY, playW, bigH);
+    pauseButton.setBounds(bigStartX + playW + bigSpacing, bigY, otherW, bigH);
+    stopButton.setBounds(bigStartX + playW + bigSpacing + otherW + bigSpacing, bigY, otherW, bigH);
+    restartButton.setBounds(bigStartX + playW + bigSpacing + otherW + bigSpacing + otherW + bigSpacing, bigY, otherW, bigH);
+
+    // ensure buttons are visible on top and get default look
+    for (auto* b : { &playButton, &pauseButton, &stopButton, &restartButton })
+    {
+        b->setSize(b->getWidth(), b->getHeight()); // Ensure button size is set
+        b->setLookAndFeel(nullptr); // Use default look and feel
+    }
+
+    // advance y so other elements go below the main controls
+    y = bigY + bigH + 16;
+
+    // ===== labels area (still in left/main area) =====
+    titleLabel.setBounds(margin, y, leftAreaWidth / 3, 20);
+    artistLabel.setBounds(margin + leftAreaWidth / 3, y, leftAreaWidth / 3, 20);
+    durationLabel.setBounds(margin + 2 * (leftAreaWidth / 3), y, leftAreaWidth / 3 - 2 * margin, 20);
     y += 30;
 
+    // ===== playlist buttons (keep them at the top of the right panel) =====
+    int rpX = getWidth() - rightPanelWidth - margin;
+    int rpInnerPad = 8;
+    int rpBtnW = rightPanelWidth - rpInnerPad * 2;
 
+    // place the two playlist control buttons near the top margin inside the right panel
+    int rpTop = margin;
+    loadPlaylistButton.setBounds(rpX + rpInnerPad, rpTop, rpBtnW, 26);
+    playSelectedButton.setBounds(rpX + rpInnerPad, rpTop + 30, rpBtnW, 26);
 
-    // ===== السلايدرز =====
-    int slidersHeight = 20;
-    int sliderSpacing = 8;
-    int timeLabelWidth = 80;
-    int availableWidth = getWidth() - (2 * margin) - timeLabelWidth - (sliderSpacing * 3);
-    int oneSliderW = availableWidth / 3;
-    int sx = margin;
+    // make playlist occupy the remaining height of the right panel (below the two buttons)
+    int playlistX = rpX + rpInnerPad;
+    int playlistY = margin + 62; // push content a bit below the top buttons visually (buttons drawn on top)
+    int playlistH = getHeight() - 2 * margin - 62;
+    if (playlistH < 100) playlistH = 100;
 
-    positionSlider.setBounds(sx, y, oneSliderW, slidersHeight);
-    sx += oneSliderW + sliderSpacing;
-    volumeSlider.setBounds(sx, y, oneSliderW, slidersHeight);
-    sx += oneSliderW + sliderSpacing;
-    speedSlider.setBounds(sx, y, oneSliderW, slidersHeight);
-    speedLabel.setBounds(sx, y - 18, 60, 16);
-    timeLabel.setBounds(getWidth() - margin - timeLabelWidth, y, timeLabelWidth, slidersHeight);
+    // Use the computed playlistY/playlistH so the buttons do NOT overlap/hide the playlist
+    playlistViewport.setBounds(playlistX, playlistY, rpBtnW, playlistH);
+    playlist.setSize(rpBtnW, playlistH);
 
-    y += slidersHeight + 20;
-
-    // ===== أزرار البلاي ليست =====
-    int playlistButtonW = 120;
-    loadPlaylistButton.setBounds(margin, y, playlistButtonW, 25);
-    playSelectedButton.setBounds(margin + playlistButtonW + spacing, y, playlistButtonW, 25);
-    y += 35;
-
-
-    // ===== مساحة البلاي ليست =====
-    int bottomReserved = 100; // مساحة كافية تحت للـ waveform
-    int playlistTop = y;
-    int playlistHeight = getHeight() - playlistTop - bottomReserved;
-    if (playlistHeight < 100)
-        playlistHeight = 100;
-
-    playlistViewport.setBounds(margin, playlistTop, getWidth() - 2 * margin, playlistHeight);
-    playlist.setSize(getWidth() - 2 * margin, playlistHeight);
-
-    // ------> 
+    // ----------> labels (keep in left area) - compute label positions relative to left area
     int playlistBtnW = 120;
-    int labelY = playlistTop - 35;                // نفس السطر فوق أزرار البلاي ليست
+    int labelY = y - 35;
     int labelH = 24;
     int gap = 8;
-
-    // مكان بداية الليبلز بعد الزرين
     int labelsStartX = margin + (playlistBtnW * 2) + (gap * 3);
-    int labelW = (getWidth() - labelsStartX - margin) / 3;
+    int labelW = (leftAreaWidth - labelsStartX - margin) / 3;
+    if (labelW < 80) labelW = 80;
 
-    // استخدمي الأسماء المعرّفة في الهيدر (titleLabel، artistLabel، durationLabel)
     titleLabel.setBounds(labelsStartX, labelY, labelW, labelH);
     artistLabel.setBounds(labelsStartX + labelW + gap, labelY, labelW, labelH);
     durationLabel.setBounds(labelsStartX + 2 * (labelW + gap), labelY, labelW, labelH);
 
-    // ----------> 
+    // ===== Waveform area and sliders =====
+    // Waveform full rect (aligned to bottom of main/left area and raised by the offset)
+    int waveformFullX = margin;
+    int waveformFullW = leftAreaWidth;
+    int waveformFullY = getHeight() - margin - waveformHeight - kWaveformVerticalOffset;
 
-    // ===== تصغير الموجة =====
-    waveformHeight = 70;
+    // make waveform narrower (70% of the available main width) and center it horizontally
+    int waveformTargetW = static_cast<int>(waveformFullW * 0.7f);
+    int waveformHorizPad = (waveformFullW - waveformTargetW) / 2;
+    int waveformX = waveformFullX + waveformHorizPad;
+    int waveformY = waveformFullY;
+
+    // position slider should sit directly above the waveform and match its width
+    int posSliderH = 28;
+    positionSlider.setBounds(waveformX, waveformY - (posSliderH + 8), waveformTargetW, posSliderH);
+
+    // volume (left) and speed (right) vertical sliders beside waveform
+    int sideSliderW = 48;
+    int sidePad = 12;
+    int volX = waveformX - sideSliderW - sidePad;
+    int speedX = waveformX + waveformTargetW + sidePad;
+    int sideY = waveformY;
+    int sideH = waveformHeight;
+
+    volumeSlider.setBounds(volX, sideY, sideSliderW, sideH);
+    speedSlider.setBounds(speedX, sideY, sideSliderW, sideH);
+
+    // volume label above left-side slider
+    volumeLabel.setBounds(volX, sideY - 20, sideSliderW, 16);
+
+    // speed label above right-side slider
+    speedLabel.setBounds(speedX, sideY - 20, sideSliderW, 16);
+
+    // time label near left area but not overlapping playlist
+    int timeLabelW = 100;
+    timeLabel.setBounds(margin + leftAreaWidth - timeLabelW, waveformY - (posSliderH + 8), timeLabelW, posSliderH);
+
+    // ensure waveformHeight is not too large for small windows
+    waveformHeight = std::min(getHeight() / 3, 220);
 }
 
 void PlayerGUI::buttonClicked(juce::Button* button)
@@ -285,10 +415,8 @@ void PlayerGUI::buttonClicked(juce::Button* button)
         muteButton.setButtonText(playerAudio.getMuteState() ? "Unmute" : "Mute");
         muteButton.setToggleState(playerAudio.getMuteState(), juce::dontSendNotification);
 
-        auto accentYellow = juce::Colour::fromRGB(255, 215, 0);
-        auto deepViolet = juce::Colour::fromRGB(100, 0, 160);
         bool on = muteButton.getToggleState();
-        muteButton.setColour(juce::TextButton::buttonColourId, on ? accentYellow : deepViolet);
+        muteButton.setColour(juce::TextButton::buttonColourId, on ? themeAccentYellow : themeDeepViolet);
         muteButton.setColour(juce::TextButton::textColourOffId, on ? juce::Colours::black : juce::Colours::white);
         muteButton.repaint();
     }
@@ -299,10 +427,8 @@ void PlayerGUI::buttonClicked(juce::Button* button)
 
         playerAudio.toggleLoop();
 
-        auto accentYellow = juce::Colour::fromRGB(255, 215, 0);
-        auto deepViolet = juce::Colour::fromRGB(100, 0, 160);
         bool on = loopButton.getToggleState();
-        loopButton.setColour(juce::TextButton::buttonColourId, on ? accentYellow : deepViolet);
+        loopButton.setColour(juce::TextButton::buttonColourId, on ? themeAccentYellow : themeDeepViolet);
         loopButton.setColour(juce::TextButton::textColourOffId, on ? juce::Colours::black : juce::Colours::white);
 
         static bool loopOn2 = false;
@@ -330,10 +456,8 @@ void PlayerGUI::buttonClicked(juce::Button* button)
             loopABButton.setButtonText(playerAudio.isLoopABEnable() ? "MiniLoop: ON" : "MiniLoop: OFF");
             loopABButton.setToggleState(playerAudio.isLoopABEnable(), juce::dontSendNotification);
 
-            auto accentYellow = juce::Colour::fromRGB(255, 215, 0);
-            auto deepViolet = juce::Colour::fromRGB(100, 0, 160);
             bool on = loopABButton.getToggleState();
-            loopABButton.setColour(juce::TextButton::buttonColourId, on ? accentYellow : deepViolet);
+            loopABButton.setColour(juce::TextButton::buttonColourId, on ? themeAccentYellow : themeDeepViolet);
             loopABButton.setColour(juce::TextButton::textColourOffId, on ? juce::Colours::black : juce::Colours::white);
             loopABButton.repaint();
         }
@@ -428,14 +552,24 @@ void PlayerGUI::updateMetadataDisplay()
 
 void PlayerGUI::mouseDown(const juce::MouseEvent& event)
 {
-    auto area = getLocalBounds().removeFromBottom(waveformHeight).reduced(10, 10);
-    if (area.contains(event.getPosition()))
+    // compute the same waveform area as in paint() so seeking matches the drawn waveform
+    int margin = 10;
+    int rightPanelWidth = std::max(220, getWidth() / 5);
+    int leftAreaX = margin;
+    int leftAreaW = getWidth() - (2 * margin) - rightPanelWidth;
+
+    juce::Rectangle<int> waveformFullRect(leftAreaX, getHeight() - margin - waveformHeight - kWaveformVerticalOffset, leftAreaW, waveformHeight);
+    int targetWidth = static_cast<int>(waveformFullRect.getWidth() * 0.7f);
+    int horizPad = (waveformFullRect.getWidth() - targetWidth) / 2;
+    juce::Rectangle<int> waveformArea = waveformFullRect.reduced(horizPad, 4);
+
+    if (waveformArea.contains(event.getPosition()))
     {
         double totalLength = playerAudio.getLengthInSecond();
         if (totalLength > 0.0)
         {
-            double clickX = event.x - area.getX();
-            double proportion = clickX / (double)area.getWidth();
+            double clickX = event.x - waveformArea.getX();
+            double proportion = clickX / (double)waveformArea.getWidth();
             proportion = juce::jlimit(0.0, 1.0, proportion);
             double newPos = proportion * totalLength;
             playerAudio.setPosition(newPos);
@@ -454,6 +588,10 @@ bool PlayerGUI::keyPressed(const juce::KeyPress& key)
         playerAudio.toggleMute();
     else if (key == juce::KeyPress('r'))
         playerAudio.restart();
+    else if (key == juce::KeyPress::leftKey)
+        playerAudio.skipBackward(5.0);
+    else if (key == juce::KeyPress::rightKey)
+		playerAudio.skipForward(5.0);
 
     return true;
 }

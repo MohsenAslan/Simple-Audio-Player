@@ -16,10 +16,10 @@ public:
 
     void shutdown() override
     {
-        // ? Just close the main window
+        // Close the main window
         mainWindow = nullptr;
 
-        // ? Save settings to disk (this uses JUCE global function)
+        // Save settings to disk
         juce::PropertiesFile::Options options;
         options.applicationName = "SimpleAudioPlayer";
         options.filenameSuffix = "settings";
@@ -28,12 +28,12 @@ public:
 
         juce::ApplicationProperties props;
         props.setStorageParameters(options);
-        props.saveIfNeeded(); // ?? this forces JUCE to write .settings to disk
+        props.saveIfNeeded();
     }
 
 private:
 
-// The main window of the app
+    // The main window of the app
     class MainWindow : public juce::DocumentWindow
     {
     public:
@@ -46,10 +46,13 @@ private:
 
             setContentOwned(new MainComponent(), true); // MainComponent = our UI + logic
 
-            centreWithSize(1500, 750);
+            // Make the window full-screen:
+            setFullScreen(true);
+
+            // If you still want it resizable while full-screen is off, you can call:
+            // setResizable(true, false);
 
             setVisible(true);
-
         }
 
         void closeButtonPressed() override
@@ -62,5 +65,4 @@ private:
 };
 
 // This macro starts the app
-
 START_JUCE_APPLICATION(SimpleAudioPlayer)

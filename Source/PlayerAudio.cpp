@@ -59,7 +59,7 @@ void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferTo
         transportSource.setPosition(0.0);
     }
 
-    // If AB loop enabled, enforce it
+    
     loopBetweenTwoPoints();
 }
 

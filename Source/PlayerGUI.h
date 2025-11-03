@@ -23,7 +23,7 @@ public:
     float getGain() const;
     void updateMetadataDisplay();
 
-    void mouseDown(const juce::MouseEvent& event) override; // to seek in waveform
+    void mouseDown(const juce::MouseEvent& event) override; // to seek in waveforma
 
     // bonus 2
     bool keyPressed(const juce::KeyPress& key) override;
@@ -56,6 +56,7 @@ private:
     //----------------------------------------------------
 
     juce::Slider volumeSlider;
+    juce::Label volumeLabel;               // <--- added (was referenced from cpp)
     juce::Slider positionSlider;
     juce::Slider speedSlider;       // ? ????
     juce::Label speedLabel;         // ? ????
@@ -90,6 +91,9 @@ private:
     juce::AudioThumbnail thumbnail{ 512, formatManager, thumbnailCache };
     int waveformHeight = 120; // height of waveform area
 
+    // Theme colours used by PlayerGUI.cpp (declare here so cpp can reference them)
+    juce::Colour themeAccentYellow { juce::Colour::fromRGB(255, 215, 0) };
+    juce::Colour themeDeepViolet  { juce::Colour::fromRGB(100, 0, 160) };
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
