@@ -134,7 +134,7 @@ This allows **two tracks to play simultaneously** — just like a real mixer!
 ---
 
 ## 🏁 License
-This project was created for educational purposes under the **Faculty of Computers and Artificial Intelligence, Cairo University**, as part of **CS251 – Software Engineering I** coursework.
+This project was created for educational purposes under the **Faculty of Computers and Artificial Intelligence, Cairo University**, as part of **CS213 – OOP** coursework.
 
 ---
 
