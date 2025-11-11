@@ -1,6 +1,6 @@
 # 🎵 M.M.E Audio Player  
 
-![App Screenshot](ab8fa789-0c9f-44f1-aeaf-445ab40fc2a8.png)
+![App Screenshot](https://github.com/MohsenAslan/Simple-Audio-Player/blob/main/Screenshot%202025-11-03%20214720.png)
 
 A modern multi-track **Audio Player** built using **JUCE Framework**.  
 This application allows users to load, play, pause, and mix multiple tracks, visualize audio waveforms, control playback speed, manage playlists, and save/load sessions.  
